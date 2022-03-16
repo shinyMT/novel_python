@@ -44,8 +44,12 @@ findContent = re.compile(r'<p>(.*?)</p>')
 q = queue.Queue()
 # 定义一个优先级队列存放顺序的章节链接
 priQue = queue.PriorityQueue()
+# 定义一个优先级队列存放爬取到的章节内容
+contentPriQue = queue.PriorityQueue(maxsize=-1)
 # 定义一个存放线程的列表
 threadList = []
+# 定义一个存放写入线程的列表
+writeThreadList = []
 # 创建一个锁对象
 lockObj = threading.Lock()
 
@@ -54,7 +58,7 @@ lockObj = threading.Lock()
 def createHeader():
     headers = dict()
     headers["User-Agent"] = random.choice(USER_AGENTS)
-    headers["Referer"] = "http://www.ke.com"
+    headers["Referer"] = "https://www.yushubo.com"
     return headers
     pass
 
@@ -95,13 +99,16 @@ def getData(baseUrl, totalChapter):
 
     # 创建并开启新线程
     for k in range(5):
-        thread = GetThread(priQue)
+        thread = GetThread(k)
         thread.start()
         threadList.append(thread)
         pass
     for t in threadList:
         t.join()
         pass
+
+    # 获取完成后最后按顺序写入文件
+    writeFileByOrder()
     pass
 
 
@@ -117,8 +124,6 @@ def analysisHTML(url):
 
 # 获取当前章节的页数
 def getPageNum(url):
-    # 获取锁对象
-    lockObj.acquire()
     soup = analysisHTML(url)
     # 根据源码找到[article-title]的h1
     title = soup.select('h1[class="article-title"]')[0].string
@@ -127,11 +132,9 @@ def getPageNum(url):
         pass
     except IndexError as e:
         num = 1
-        print('当前章节只有一页 ', e)
+        # print('当前章节只有一页 ', e)
         pass
 
-    # 释放锁
-    lockObj.release()
     return num
     pass
 
@@ -154,19 +157,19 @@ def getTime():
 
 # 创建一个线程类用于获取章节内容
 class GetThread(threading.Thread):
-    # 定义一个变量存放已经写入文件的数量
-    writeNum = 0
 
-    def __init__(self, que):
+    def __init__(self, threadId):
         threading.Thread.__init__(self)
-        self.que = que
+        self.threadId = threadId
         pass
 
     # 设置线程任务
     def run(self):
+        # 获取锁对象
+        # lockObj.acquire()
         # 获取队列中的所有地址
-        while not self.que.empty():
-            urlData = self.que.get()
+        while not priQue.empty():
+            urlData = priQue.get()
             firstUrl = urlData[1]
             # 获取当前章节的章节序号
             index = int(str(firstUrl).split('_')[2])
@@ -198,11 +201,28 @@ class GetThread(threading.Thread):
 
             # 向内容中添加换行符以开启下一章节
             fileContent += '\n'
-            writeToFile(fileContent)
-            print('第 ', index, ' 章获取完毕')
 
+            # 将获取到的章节内容按照章节优先级放入队列中
+            contentPriQue.put((index, fileContent))
             pass
         pass
+    pass
+
+
+# 按顺序将内容写入文件的方法
+def writeFileByOrder():
+    # 获取锁
+    lockObj.acquire()
+    # 获取队列池中所有的内容
+    while not contentPriQue.empty():
+        data = contentPriQue.get()
+        index = data[0]
+        content = data[1]
+        writeToFile(content)
+        print('第 ', index, ' 章获取完毕')
+        pass
+    # 释放锁
+    lockObj.release()
     pass
 
 
@@ -225,9 +245,9 @@ if __name__ == '__main__':
     for i in range(1, len(sys.argv)):
         args.append((int(sys.argv[i])))
         pass
+    totalNum = args[0]
+    print("获取的总章节数为：" + str(totalNum))
 
-    main(args[0])
-    # main(9)
+    main(totalChapterNum=totalNum)
+    # main(8)
     pass
-
-print('成功调用脚本, 脚本名为：' + sys.argv[0])
