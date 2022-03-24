@@ -88,9 +88,11 @@ def askUrl(url):
 
 
 # 解析网页结构获取数据 --- baseUrl: 不带参数的网页地址
-def getData(baseUrl, totalChapter, savePath):
+def getData(baseUrl, totalChapter, savePath, novelName):
+    # 将获取到的参数 totalChapter 转换为int类型
+    totalChapterAsInt = int(totalChapter)
     # 循环n次获取全部章节地址
-    for n in range(1, totalChapter):
+    for n in range(1, totalChapterAsInt):
         # 根据页数, 拼接得到完整的URL地址
         firstUrl = baseUrl + "_" + str(n)
         # 将章节地址放入队列中并设置优先级
@@ -108,7 +110,7 @@ def getData(baseUrl, totalChapter, savePath):
         pass
 
     # 获取完成后最后按顺序写入文件
-    writeFileByOrder(savePath)
+    writeFileByOrder(savePath, novelName)
     pass
 
 
@@ -140,9 +142,9 @@ def getPageNum(url):
 
 
 # 将内容写入文件
-def writeToFile(content, savePath):
+def writeToFile(content, savePath, novelName):
     # 拼接目标地址
-    targetSavePath = savePath + '离谱.txt'
+    targetSavePath = savePath + novelName + '.txt'
     # with自带close效果
     with open(targetSavePath, 'a+') as f:
         f.write(content)
@@ -212,7 +214,7 @@ class GetThread(threading.Thread):
 
 
 # 按顺序将内容写入文件的方法
-def writeFileByOrder(savePath):
+def writeFileByOrder(savePath, novelName):
     # 获取锁
     lockObj.acquire()
     # 获取队列池中所有的内容
@@ -220,7 +222,7 @@ def writeFileByOrder(savePath):
         data = contentPriQue.get()
         index = data[0]
         content = data[1]
-        writeToFile(content, savePath)
+        writeToFile(content, savePath, novelName)
         print('第 ', index, ' 章获取完毕')
         pass
     # 释放锁
@@ -229,14 +231,17 @@ def writeFileByOrder(savePath):
 
 
 # 主函数
-def main(totalChapterNum, savePath):
+def main(totalChapterNum, savePath, novelUrl, novelName):
     # 不带参数值的url
-    # 完整地址：https://www.yushubo.com/book_75441.html
     # 第一章地址：https://www.yushubo.com/read_99857_1.html
     # 最后一章地址：https://www.yushubo.com/read_99857_115.html
-    baseUrl = "https://www.yushubo.com/read_99857"
+    # 将传递来的url进行切割
+    splitList = novelUrl.split('_')
+    novelBaseUrl = splitList[0] + "_" + splitList[1]
+    # baseUrl = "https://www.yushubo.com/read_99857"
+    baseUrl = novelBaseUrl
     # 爬取网页结构并解析数据
-    getData(baseUrl, totalChapterNum, savePath)
+    getData(baseUrl, totalChapterNum, savePath, novelName)
 
     pass
 
@@ -245,12 +250,14 @@ if __name__ == '__main__':
     args = []
     # sys.argv用于获取url传递的参数, 因为argv[0]代表程序名，因此参数从1开始取
     for i in range(1, len(sys.argv)):
-        args.append((int(sys.argv[i])))
+        args.append((sys.argv[i]))
         pass
     totalNum = args[0]
     targetPath = args[1]
-    print("获取的总章节数为：" + str(totalNum) + ", 保存的目录为：" + str(targetPath))
+    bookUrl = args[2]
+    bookName = args[3]
+    # print("获取的总章节数为：" + str(totalNum) + ", 保存的目录为：" + str(targetPath))
 
-    main(totalChapterNum=totalNum, savePath=targetPath)
+    main(totalChapterNum=totalNum, savePath=targetPath, novelUrl=bookUrl, novelName=bookName)
     # main(8)
     pass
