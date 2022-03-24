@@ -88,7 +88,7 @@ def askUrl(url):
 
 
 # 解析网页结构获取数据 --- baseUrl: 不带参数的网页地址
-def getData(baseUrl, totalChapter):
+def getData(baseUrl, totalChapter, savePath):
     # 循环n次获取全部章节地址
     for n in range(1, totalChapter):
         # 根据页数, 拼接得到完整的URL地址
@@ -108,7 +108,7 @@ def getData(baseUrl, totalChapter):
         pass
 
     # 获取完成后最后按顺序写入文件
-    writeFileByOrder()
+    writeFileByOrder(savePath)
     pass
 
 
@@ -140,9 +140,11 @@ def getPageNum(url):
 
 
 # 将内容写入文件
-def writeToFile(content):
+def writeToFile(content, savePath):
+    # 拼接目标地址
+    targetSavePath = savePath + '离谱.txt'
     # with自带close效果
-    with open('D:\\测试.text', 'a+') as f:
+    with open(targetSavePath, 'a+') as f:
         f.write(content)
         pass
     pass
@@ -210,7 +212,7 @@ class GetThread(threading.Thread):
 
 
 # 按顺序将内容写入文件的方法
-def writeFileByOrder():
+def writeFileByOrder(savePath):
     # 获取锁
     lockObj.acquire()
     # 获取队列池中所有的内容
@@ -218,7 +220,7 @@ def writeFileByOrder():
         data = contentPriQue.get()
         index = data[0]
         content = data[1]
-        writeToFile(content)
+        writeToFile(content, savePath)
         print('第 ', index, ' 章获取完毕')
         pass
     # 释放锁
@@ -227,14 +229,14 @@ def writeFileByOrder():
 
 
 # 主函数
-def main(totalChapterNum):
+def main(totalChapterNum, savePath):
     # 不带参数值的url
     # 完整地址：https://www.yushubo.com/book_75441.html
     # 第一章地址：https://www.yushubo.com/read_99857_1.html
     # 最后一章地址：https://www.yushubo.com/read_99857_115.html
     baseUrl = "https://www.yushubo.com/read_99857"
     # 爬取网页结构并解析数据
-    getData(baseUrl, totalChapterNum)
+    getData(baseUrl, totalChapterNum, savePath)
 
     pass
 
@@ -246,8 +248,9 @@ if __name__ == '__main__':
         args.append((int(sys.argv[i])))
         pass
     totalNum = args[0]
-    print("获取的总章节数为：" + str(totalNum))
+    targetPath = args[1]
+    print("获取的总章节数为：" + str(totalNum) + ", 保存的目录为：" + str(targetPath))
 
-    main(totalChapterNum=totalNum)
+    main(totalChapterNum=totalNum, savePath=targetPath)
     # main(8)
     pass
