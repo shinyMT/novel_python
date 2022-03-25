@@ -3,6 +3,7 @@
 
 
 # 引入模块
+import os
 import sys
 import time
 from bs4 import BeautifulSoup
@@ -11,7 +12,6 @@ import urllib.request, urllib.error
 import random
 import queue
 import threading
-
 
 # 请求头
 USER_AGENTS = [
@@ -91,6 +91,10 @@ def askUrl(url):
 def getData(baseUrl, totalChapter, savePath, novelName):
     # 将获取到的参数 totalChapter 转换为int类型
     totalChapterAsInt = int(totalChapter)
+    # 在一开始将书名写入文件
+    titleContent = '% ' + novelName + '\n'
+    writeToFile(titleContent, savePath, novelName)
+
     # 循环n次获取全部章节地址
     for n in range(1, totalChapterAsInt):
         # 根据页数, 拼接得到完整的URL地址
@@ -111,6 +115,12 @@ def getData(baseUrl, totalChapter, savePath, novelName):
 
     # 获取完成后最后按顺序写入文件
     writeFileByOrder(savePath, novelName)
+
+    # 拼接保存的地址
+    saveNovelPath = savePath + novelName
+    # 写入完成后调用外部程序将其转换为epub格式
+    cmd = 'pandoc.exe %s -o %s' % (saveNovelPath + '.txt', saveNovelPath + '.epub')
+    os.system(cmd)
     pass
 
 
@@ -146,7 +156,7 @@ def writeToFile(content, savePath, novelName):
     # 拼接目标地址
     targetSavePath = savePath + novelName + '.txt'
     # with自带close效果
-    with open(targetSavePath, 'a+') as f:
+    with open(targetSavePath, 'a+', encoding='utf-8') as f:
         f.write(content)
         pass
     pass
@@ -183,7 +193,7 @@ class GetThread(threading.Thread):
             # 获取页数
             pageNum = getPageNum(firstUrl)
             # 向内容中添加标题
-            fileContent += "第" + str(index) + "章\n"
+            fileContent += "# 第" + str(index) + "章\n"
 
             for j in range(1, int(pageNum) + 1):
                 detailUrl = firstUrl + "_" + str(j) + ".html"
@@ -196,7 +206,7 @@ class GetThread(threading.Thread):
                     content = re.findall(findContent, page)
                     for sentence in content:
                         # 去除多余字符和p标签得到正常内容
-                        single = str(sentence).replace('\u3000', '').replace('<p>', '\n')
+                        single = str(sentence).replace('\u3000', '').replace('<p>', '\n\n')
                         # 向内容中添加章节具体内容
                         fileContent += single
                         pass
@@ -204,12 +214,13 @@ class GetThread(threading.Thread):
                 pass
 
             # 向内容中添加换行符以开启下一章节
-            fileContent += '\n'
+            fileContent += '\n\n'
 
             # 将获取到的章节内容按照章节优先级放入队列中
             contentPriQue.put((index, fileContent))
             pass
         pass
+
     pass
 
 
