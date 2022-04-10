@@ -90,7 +90,7 @@ def askUrl(url):
 # 解析网页结构获取数据 --- baseUrl: 不带参数的网页地址
 def getData(baseUrl, totalChapter, savePath, novelName):
     # 将获取到的参数 totalChapter 转换为int类型
-    totalChapterAsInt = int(totalChapter)
+    totalChapterAsInt = int(totalChapter) + 1
     # 在一开始将书名写入文件
     titleContent = '% ' + novelName + '\n'
     writeToFile(titleContent, savePath, novelName)
