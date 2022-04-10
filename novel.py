@@ -12,6 +12,8 @@ import urllib.request, urllib.error
 import random
 import queue
 import threading
+from xpinyin import Pinyin
+import ssl
 
 # 请求头
 USER_AGENTS = [
@@ -52,6 +54,10 @@ threadList = []
 writeThreadList = []
 # 创建一个锁对象
 lockObj = threading.Lock()
+# 创建一个拼音对象
+p = Pinyin()
+# 全局取消证书验证
+ssl._create_default_https_context = ssl._create_unverified_context
 
 
 # 随机获取请求头，避免因多次访问被拒绝
@@ -91,6 +97,9 @@ def askUrl(url):
 def getData(baseUrl, totalChapter, savePath, novelName):
     # 将获取到的参数 totalChapter 转换为int类型
     totalChapterAsInt = int(totalChapter) + 1
+
+    # 将书名转换为拼音
+    novelNamePinyin = p.get_pinyin(novelName, '')
     # 在一开始将书名写入文件
     titleContent = '% ' + novelName + '\n'
     writeToFile(titleContent, savePath, novelName)
@@ -114,10 +123,10 @@ def getData(baseUrl, totalChapter, savePath, novelName):
         pass
 
     # 获取完成后最后按顺序写入文件
-    writeFileByOrder(savePath, novelName)
+    writeFileByOrder(savePath, novelNamePinyin)
 
     # 拼接保存的地址
-    saveNovelPath = savePath + novelName
+    saveNovelPath = savePath + novelNamePinyin
     # 写入完成后调用外部程序将其转换为epub格式
     cmd = 'pandoc %s -o %s' % (saveNovelPath + '.txt', saveNovelPath + '.epub')
     os.system(cmd)
@@ -153,8 +162,9 @@ def getPageNum(url):
 
 # 将内容写入文件
 def writeToFile(content, savePath, novelName):
+    novelNamePinyin = p.get_pinyin(novelName, '')
     # 拼接目标地址
-    targetSavePath = savePath + novelName + '.txt'
+    targetSavePath = savePath + novelNamePinyin + '.txt'
     # with自带close效果
     with open(targetSavePath, 'a+', encoding='utf-8') as f:
         f.write(content)
@@ -270,5 +280,5 @@ if __name__ == '__main__':
     # print("获取的总章节数为：" + str(totalNum) + ", 保存的目录为：" + str(targetPath))
 
     main(totalChapterNum=totalNum, savePath=targetPath, novelUrl=bookUrl, novelName=bookName)
-    # main(8)
+    # main(8, '/Users/novel/', 'https://www.yushubo.com/read_160609_24.html', '热烈随行')
     pass
