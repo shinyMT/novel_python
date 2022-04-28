@@ -14,6 +14,7 @@ import queue
 import threading
 from xpinyin import Pinyin
 import ssl
+from urllib.parse import urlencode
 
 # 请求头
 USER_AGENTS = [
@@ -251,19 +252,82 @@ def writeFileByOrder(savePath, novelName):
     pass
 
 
+# 在搜索页爬取对应书名和作者的书籍信息
+def getInfoByName(baseUrl, name, author):
+    targetBookNode = ""
+    searchParam = {"ss": name}
+    searchUrl = baseUrl + "?" + urlencode(searchParam)
+    resultListPage = analysisHTML(searchUrl)
+    # 获取所有书籍节点
+    for bookItem in resultListPage.select('li[class="item clearfix"]'):
+        # 根据作者名进行精确查找
+        for authorList in bookItem.select('p[class="author"]'):
+            # 获取p标签中的作者名
+            authorName = authorList.get_text().split("：")[1]
+            if authorName in author:
+                # 获取对应作者的信息节点
+                targetBookNode = bookItem
+                pass
+            pass
+        pass
+    # print(targetBookNode)
+    bookHref = targetBookNode.select('a')[0]['href']
+    bookImage = targetBookNode.select('img')[0]['src']
+    # 将关键信息放入节点中
+    targetBookItem = {
+        "bookName": name,
+        "bookAuthor": author,
+        "bookHref":  bookHref,
+        "bookImage": bookImage
+    }
+
+    return targetBookItem
+    pass
+
+
+# 根据书籍信息获取总章节数和阅读地址
+def getDetailInfoByBook(bookItem, baseUrl, savePath):
+    # 定义一个变量存放最新章节地址
+    latestUrl = ""
+    # 根据前面获取的书籍信息得到书籍具体信息的页面地址
+    bookUrlWithMenu = baseUrl + bookItem['bookHref']
+    # 获取最新章节的地址
+    bookInfoPage = analysisHTML(bookUrlWithMenu)
+    for pageUrl in bookInfoPage.select('ul[class="lastchapter"]'):
+        latestUrl = pageUrl.select('a')[0]['href']
+        pass
+    # print(latestUrl)
+    # 对最新章节地址进行切割得到阅读基础地址和总章节数
+    urlInfoList = latestUrl.split("_")
+    bookChapter = urlInfoList[2].split(".")[0]
+    bookDetailUrl = urlInfoList[0] + "_" + urlInfoList[1]
+
+    # 拼接得到阅读的基础地址
+    readBaseUrl = baseUrl + bookDetailUrl
+    getData(readBaseUrl, bookChapter, savePath, bookItem['bookName'])
+    pass
+
+
 # 主函数
-def main(totalChapterNum, savePath, novelUrl, novelName):
+def main(name, author, savePath):
     # 不带参数值的url
     # 第一章地址：https://www.yushubo.com/read_99857_1.html
     # 最后一章地址：https://www.yushubo.com/read_99857_115.html
     # 将传递来的url进行切割
-    splitList = novelUrl.split('_')
-    novelBaseUrl = splitList[0] + "_" + splitList[1]
+    # splitList = novelUrl.split('_')
+    # novelBaseUrl = splitList[0] + "_" + splitList[1]
     # baseUrl = "https://www.yushubo.com/read_99857"
-    baseUrl = novelBaseUrl
+    # baseUrl = novelBaseUrl
     # 爬取网页结构并解析数据
-    getData(baseUrl, totalChapterNum, savePath, novelName)
+    # getData(baseUrl, totalChapterNum, savePath, novelName)
 
+    baseUrl = "https://www.yushubo.com"
+    searchBaseUrl = "https://www.yushubo.com/search.html"
+
+    # 根据用户输入的书名和作者匹配书籍信息
+    bookItem = getInfoByName(searchBaseUrl, name, author)
+    # 根据获取到的书籍信息去匹配总章节数和阅读的详细地址
+    getDetailInfoByBook(bookItem, baseUrl, savePath)
     pass
 
 
@@ -273,12 +337,11 @@ if __name__ == '__main__':
     for i in range(1, len(sys.argv)):
         args.append((sys.argv[i]))
         pass
-    totalNum = args[0]
     targetPath = args[1]
-    bookUrl = args[2]
-    bookName = args[3]
+    bookName = args[2]
+    bookAuthor = args[3]
     # print("获取的总章节数为：" + str(totalNum) + ", 保存的目录为：" + str(targetPath))
 
-    main(totalChapterNum=totalNum, savePath=targetPath, novelUrl=bookUrl, novelName=bookName)
-    # main(8, '/Users/novel/', 'https://www.yushubo.com/read_160609_24.html', '热烈随行')
+    main(name=bookName, author=bookAuthor, savePath=targetPath)
+    # main('离谱', '热到昏厥', 'D:\\')
     pass
