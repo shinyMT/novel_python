@@ -118,8 +118,8 @@ def getData(baseUrl, totalChapter, savePath, novelName):
 
     # 拼接保存的地址
     saveNovelPath = savePath + novelName
-    # 写入完成后调用外部程序将其转换为epub格式
-    cmd = 'pandoc.exe %s -o %s' % (saveNovelPath + '.txt', saveNovelPath + '.epub')
+    # 写入完成后调用外部程序将txt文件转换为epub格式
+    cmd = 'pandoc %s -o %s' % (saveNovelPath + '.txt', saveNovelPath + '.epub')
     os.system(cmd)
     pass
 
